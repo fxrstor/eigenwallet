@@ -210,7 +210,7 @@ jobs:
           host: ubuntu-22.04
 
       - name: Run test ${{ matrix.test_name }}
-        run: cargo test --package ${{ matrix.package }} --test ${{ matrix.test_name }} -- --nocapture
+        run: cargo test --manifest-path ${{ matrix.package }}/Cargo.toml --test ${{ matrix.test_name }} -- --nocapture
 
   check_stable:
     runs-on: ubuntu-22.04
