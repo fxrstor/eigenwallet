@@ -1,8 +1,8 @@
 mod harness;
 
 use anyhow::Result;
-use harness::{setup_test, TestContext};
-use monero::Network;
+use harness::setup_test;
+use monero_address::Network;
 use monero_wallet::Wallets;
 use serial_test::serial;
 
@@ -13,10 +13,9 @@ async fn test_create_wallet() -> Result<()> {
         let wallets = context.create_wallets().await?;
         let main_wallet = wallets.main_wallet().await;
         let address = main_wallet.main_address().await?;
-        assert_eq!(address.network, Network::Regtest);
+        assert_eq!(address.network(), Network::Testnet);
         Ok(())
-    })
-    .await;
+    }).await?;
     Ok(())
 }
 
@@ -32,22 +31,20 @@ async fn test_open_existing_wallet() -> Result<()> {
             context.wallet_dir.path().to_path_buf(),
             harness::WALLET_NAME.to_string(),
             context.daemon.clone(),
-            Network::Regtest,
+            Network::Testnet,
             true,
             None,
             None,
-        )
-        .await?;
+        ).await?;
 
         let main_wallet = wallets.main_wallet().await;
         let address = main_wallet.main_address().await?;
 
-        assert_eq!(address.network, Network::Regtest);
+        assert_eq!(address.network(), Network::Testnet);
         assert_eq!(address.to_string(), initial_address.to_string());
 
         Ok(())
-    })
-    .await;
+    }).await?;
     Ok(())
 }
 
@@ -68,12 +65,11 @@ async fn test_restore_wallet_from_seed() -> Result<()> {
         let restored_wallet = WalletHandle::open_or_create_from_seed(
             restore_dir.path().join(restore_name).display().to_string(),
             seed.clone(),
-            Network::Regtest,
+            Network::Testnet,
             0,
             true,
             context.daemon.clone(),
-        )
-        .await?;
+        ).await?;
 
         restored_wallet.unsafe_prepare_for_regtest().await;
 
@@ -81,7 +77,6 @@ async fn test_restore_wallet_from_seed() -> Result<()> {
         assert_eq!(address, restored_address);
 
         Ok(())
-    })
-    .await;
+    }).await?;
     Ok(())
 }

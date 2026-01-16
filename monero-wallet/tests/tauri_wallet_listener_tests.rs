@@ -1,8 +1,9 @@
 mod harness;
 
 use anyhow::Result;
-use harness::{setup_test, TestContext, WALLET_NAME};
+use harness::{setup_test, TestContext};
 use monero_sys::TransactionInfo;
+use monero_sys::WalletEventListener;
 use monero_wallet::{MoneroTauriHandle, TauriWalletListener};
 use serial_test::serial;
 use std::sync::{Arc, Mutex};
@@ -36,7 +37,7 @@ impl MockTauriHandle {
                     let balances = self.balance_updates.lock().unwrap();
                     let history = self.history_updates.lock().unwrap();
                     if !balances.is_empty() && !history.is_empty() {
-                        return Ok(());
+                        break;
                     }
                 }
                 notified.await;

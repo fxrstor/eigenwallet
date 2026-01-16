@@ -36,3 +36,6 @@ zeroize = { workspace = true }
 
 [dev-dependencies]
 monero-harness = { path = "../monero-harness" }
+rand = "0.8"
+serial_test = "0.5"
+tempfile = "3"

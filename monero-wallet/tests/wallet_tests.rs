@@ -1,8 +1,9 @@
 mod harness;
 
 use anyhow::Result;
-use harness::{setup_test, TestContext, WALLET_NAME};
-use monero::Network;
+use harness::{setup_test, WALLET_NAME};
+use monero_address::{AddressType, Network};
+use monero_oxide_ext::{PublicKey, PrivateKey};
 use monero_sys::TransactionInfo;
 use monero_wallet::{MoneroTauriHandle, Wallets};
 use serial_test::serial;
@@ -45,27 +46,8 @@ impl MockTauriHandle {
             }
 
             match tokio::time::timeout(deadline - now, notified).await {
-                Ok(()) => continue;
-                Err(_) => return Err(anyhow::anyhow!("timed out waiting for sync update"));
-            }
-        }
-    }
-
-    async fn wait_for_any_update(&self, timeout: Duration) -> Result<()> {
-        let deadline = tokio::time::Instant::now() + timeout;
-        loop {
-            if !self.sync_updates.lock().unwrap().is_empty() || !self.balance_updates.lock().unwrap().is_empty() || !self.history_updates.lock().unwrap().is_empty() {
-                return Ok(());
-            }
-            let now = tokio::time::Instant::now();
-            if now >= deadline {
-                return Err(anyhow::anyhow!("timed out waiting for any update"));
-            }
-
-            let remaining = deadline - now;
-            match tokio::time::timeout(remaining, self.notify.notified()).await {
-                Ok(()) => continue,
-                Err(_) => return Err(anyhow::anyhow!("timed out waiting for any update")),
+                Ok(()) => { continue; }
+                Err(_) => { return Err(anyhow::anyhow!("timed out waiting for sync update")); }
             }
         }
     }
@@ -99,7 +81,7 @@ async fn test_tauri_listener() -> Result<()> {
             context.wallet_dir.path().to_path_buf(),
             WALLET_NAME.to_string(),
             context.daemon.clone(),
-            Network::Mainnet,
+            Network::Testnet,
             true,
             tauri_handle,
             None,
@@ -146,7 +128,7 @@ async fn test_recent_wallets() -> Result<()> {
             context.wallet_dir.path().to_path_buf(),
             WALLET_NAME.to_string(),
             context.daemon.clone(),
-            Network::Regtest,
+            Network::Testnet,
             true,
             None,
             Some(db.clone()),
@@ -166,15 +148,26 @@ async fn test_recent_wallets() -> Result<()> {
 async fn test_swap_wallet() -> Result<()> {
     setup_test(|context| async move {
         use swap_core::monero::primitives::{PrivateViewKey, TxHash};
-        let mut rng = rand::thread_rng();
+        let (spend_key, view_key, address) = {
+            let mut rng = rand::thread_rng();
 
-        let spend_key_prim = PrivateViewKey::new_random(&mut rng);
-        let view_key_prim = PrivateViewKey::new_random(&mut rng);
-        let address = monero::Address::standard(
-            Network::Mainnet,
-            monero::PublicKey::from_private_key(&monero::PrivateKey::from(spend_key_prim.clone())),
-            monero::PublicKey::from_private_key(&monero::PrivateKey::from(view_key_prim.clone())),
-        );
+            let spend_key = PrivateKey::from_scalar(swap_core::monero::Scalar::random(&mut rng));
+            let view_key = PrivateViewKey::new_random(&mut rng);
+
+            let address = {
+                let public_spend_key = PublicKey::from_private_key(&spend_key);
+                let public_view_key = PublicKey::from_private_key(&view_key.into());
+
+                monero_address::MoneroAddress::new(
+                    Network::Testnet,
+                    AddressType::Subaddress,
+                    public_spend_key.decompress(),
+                    public_view_key.decompress(),
+                )
+            };
+
+            (spend_key, view_key, address)
+        };
 
         let amount = 1_000_000_000_000u64; // 1 XMR
         let tx = TxHash(context.monero.wallet("miner")?.transfer(&address, amount).await?.txid,);
@@ -185,10 +178,10 @@ async fn test_swap_wallet() -> Result<()> {
         let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
 
         let swap_wallet = loop {
-            match wallets.swap_wallet_spendable(swap_id, spend_key_prim.clone().into(), view_key_prim.clone(), tx.clone()).await
+            match wallets.swap_wallet_spendable(swap_id, spend_key.clone().into(), view_key.clone(), tx.clone()).await
             {
                 Ok(w) => break w,
-                Err(e) if tokio::time::Instant::now() < deadline => {
+                Err(_) if tokio::time::Instant::now() < deadline => {
                     tokio::time::sleep(Duration::from_millis(200)).await
                 }
                 Err(e) => break Err(anyhow::anyhow!("Failed to open swap wallet: {e}"))?,
@@ -203,8 +196,7 @@ async fn test_swap_wallet() -> Result<()> {
 #[tokio::test]
 #[serial]
 async fn test_change_monero_node_to_different_daemon() -> Result<()> {
-    use testcontainers::clients::Cli;
-    use monero_harness::{image, Monero};
+    use monero_harness::{image, Monero, Cli};
 
     setup_test(|context| async move {
         let wallets = context.create_wallets().await?;
@@ -218,9 +210,9 @@ async fn test_change_monero_node_to_different_daemon() -> Result<()> {
 
         let cli = Cli::default();
         let wallet_name = "secondary_wallet".to_string();
-        let (_monero_b, monerod_b, _wallet_b) = Monero::new(&cli, vec![wallet_name]).await?;
-
-        let monerod_b_port = monerod_b.ports().map_to_host_port_ipv4(image::RPC_PORT)?;
+        let wallet_name_static: &'static str = Box::leak(wallet_name.into_boxed_str());
+        let (_monero_b, monerod_b, _wallet_b) = Monero::new(&cli, vec![wallet_name_static]).await?;
+        let monerod_b_port = monerod_b.ports().map_to_host_port_ipv4(image::RPC_PORT).ok_or_else(|| anyhow::anyhow!("failed to map monerod RPC port"))?;
         let daemon_b = monero_sys::Daemon {
             hostname: "127.0.0.1".to_string(),
             port: monerod_b_port,
@@ -232,7 +224,7 @@ async fn test_change_monero_node_to_different_daemon() -> Result<()> {
             loop {
                 let h = main_wallet.blockchain_height().await?;
                 if h < height_a {
-                    break Ok(());
+                    break Ok::<(), anyhow::Error>(());
                 }
                 tokio::time::sleep(Duration::from_millis(300)).await;
             }
