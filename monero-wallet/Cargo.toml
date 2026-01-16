@@ -17,7 +17,7 @@ throttle = { path = "../throttle" }
 uuid = { workspace = true }
 
 # Tokio
-tokio = { workspace = true, features = ["process", "fs", "net", "parking_lot", "rt"] }
+tokio = { workspace = true, features = ["process", "fs", "net", "parking_lot", "rt", "macros", "time"] }
 
 # Tracing
 tracing = { workspace = true }
@@ -33,3 +33,6 @@ monero-wallet-ng = { path = "../monero-wallet-ng" }
 curve25519-dalek = { workspace = true }
 hex = { workspace = true }
 zeroize = { workspace = true }
+
+[dev-dependencies]
+monero-harness = { path = "../monero-harness" }

@@ -6585,6 +6585,7 @@ dependencies = [
  "hex",
  "monero-address",
  "monero-daemon-rpc",
+ "monero-harness",
  "monero-oxide-ext",
  "monero-simple-request-rpc",
  "monero-sys",
