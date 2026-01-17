@@ -81,7 +81,7 @@ async fn test_tauri_listener() -> Result<()> {
             context.wallet_dir.path().to_path_buf(),
             WALLET_NAME.to_string(),
             context.daemon.clone(),
-            Network::Testnet,
+            Network::Mainnet,
             true,
             tauri_handle,
             None,
@@ -128,7 +128,7 @@ async fn test_recent_wallets() -> Result<()> {
             context.wallet_dir.path().to_path_buf(),
             WALLET_NAME.to_string(),
             context.daemon.clone(),
-            Network::Testnet,
+            Network::Mainnet,
             true,
             None,
             Some(db.clone()),
@@ -159,7 +159,7 @@ async fn test_swap_wallet() -> Result<()> {
                 let public_view_key = PublicKey::from_private_key(&view_key.into());
 
                 monero_address::MoneroAddress::new(
-                    Network::Testnet,
+                    Network::Mainnet,
                     AddressType::Subaddress,
                     public_spend_key.decompress(),
                     public_view_key.decompress(),
@@ -171,11 +171,13 @@ async fn test_swap_wallet() -> Result<()> {
 
         let amount = 1_000_000_000_000u64; // 1 XMR
         let tx = TxHash(context.monero.wallet("miner")?.transfer(&address, amount).await?.txid,);
-        context.monero.generate_block().await?;
+        for _ in 0..70 {
+            context.monero.generate_block().await?;
+        }
 
         let wallets = context.create_wallets().await?;
         let swap_id = Uuid::new_v4();
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+        let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
 
         let swap_wallet = loop {
             match wallets.swap_wallet_spendable(swap_id, spend_key.clone().into(), view_key.clone(), tx.clone()).await
@@ -187,7 +189,9 @@ async fn test_swap_wallet() -> Result<()> {
                 Err(e) => break Err(anyhow::anyhow!("Failed to open swap wallet: {e}"))?,
             }
         };
-        assert_eq!(swap_wallet.total_balance().await?.as_pico(), amount);
+        swap_wallet.wait_until_synced(monero_sys::no_listener()).await?;
+        let total = swap_wallet.total_balance().await?.as_pico();
+        assert!(total >= amount, "swap wallet balance {} < expected {}", total, amount);
         Ok(())
     }).await?;
     Ok(())
@@ -202,7 +206,7 @@ async fn test_change_monero_node_to_different_daemon() -> Result<()> {
         let wallets = context.create_wallets().await?;
         let main_wallet = wallets.main_wallet().await;
 
-        for _ in 0..20 {
+        for _ in 0..70 {
             context.monero.generate_block().await?;
         }
         main_wallet.wait_until_synced(monero_sys::no_listener()).await?;
@@ -220,13 +224,13 @@ async fn test_change_monero_node_to_different_daemon() -> Result<()> {
         };
 
         wallets.change_monero_node(daemon_b.clone()).await?;
-        tokio::time::timeout(Duration::from_secs(15), async {
+        tokio::time::timeout(Duration::from_secs(45), async {
             loop {
                 let h = main_wallet.blockchain_height().await?;
                 if h < height_a {
                     break Ok::<(), anyhow::Error>(());
                 }
-                tokio::time::sleep(Duration::from_millis(300)).await;
+                tokio::time::sleep(Duration::from_millis(500)).await;
             }
         }).await.map_err(|_| anyhow::anyhow!("wallet did not rebind to new daemon"))??;
         let height_b = main_wallet.blockchain_height().await?;

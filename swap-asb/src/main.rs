@@ -561,7 +561,7 @@ pub async fn main() -> Result<()> {
 
                 monero_address::MoneroAddress::new(
                     config.monero.network,
-                    monero_address::AddressType::Subaddress,
+                    monero_address::AddressType::Legacy,
                     public_spend_key.decompress(),
                     public_view_key.decompress(),
                 )

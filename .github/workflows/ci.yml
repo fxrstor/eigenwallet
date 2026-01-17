@@ -197,7 +197,7 @@ jobs:
           - package: monero-wallet
             test_name: transaction_tests
           - package: monero-wallet
-            test_name: wallet_operations
+            test_name: wallet_lifecycle
 
     runs-on: ubuntu-22.04
     if: github.event_name == 'push' || !github.event.pull_request.draft

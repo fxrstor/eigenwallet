@@ -19,6 +19,7 @@ fn init_globals() {
     });
 }
 
+#[allow(dead_code)]
 pub struct TestContext {
     pub monero: Monero,
     pub wallet_dir: TempDir,
@@ -32,7 +33,7 @@ impl TestContext {
             self.wallet_dir.path().to_path_buf(),
             self.wallet_name.clone(),
             self.daemon.clone(),
-            Network::Testnet,
+            Network::Mainnet,
             true,
             None,
             None,
@@ -50,7 +51,7 @@ where
     init_globals();
     let cli = Cli::default();
     let wallet_name_string = WALLET_NAME.to_string();
-    let (monero, monerod_container, wallet_container) =Monero::new(&cli, vec![WALLET_NAME]).await.context("spawning monero containers")?;
+    let (monero, monerod_container, wallet_container) = Monero::new(&cli, vec![WALLET_NAME]).await.context("spawning monero containers")?;
 
     let monerod_port = monerod_container
         .ports()

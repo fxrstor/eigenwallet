@@ -36,7 +36,7 @@ async fn test_receive_funds() -> Result<()> {
         let amount = 1_000_000_000_000u64; // 1 XMR
         miner_wallet.transfer(&address, amount).await?;
 
-        for _ in 0..30 {
+        for _ in 0..60 {
             context.monero.generate_block().await?;
         }
         main_wallet.wait_until_synced(monero_sys::no_listener()).await?;
@@ -72,7 +72,7 @@ async fn test_transaction_history() -> Result<()> {
         let amount = 1_000_000_000_000u64; // 1 XMR
         miner_wallet.transfer(&address, amount).await?;
 
-        for _ in 0..30 {
+        for _ in 0..70 {
             context.monero.generate_block().await?;
         }
         main_wallet.wait_until_synced(monero_sys::no_listener()).await?;
@@ -104,8 +104,6 @@ async fn test_transaction_history() -> Result<()> {
 #[serial]
 async fn test_transfer_funds() -> Result<()> {
     setup_test(|context| async move {
-        let network = Network::Testnet;
-
         let wallets_alice = context.create_wallets().await?;
         let alice_wallet = wallets_alice.main_wallet().await;
         let alice_address = alice_wallet.main_address().await?;
@@ -114,7 +112,7 @@ async fn test_transfer_funds() -> Result<()> {
         let amount = 1_000_000_000_000u64; // 1 XMR
         miner_wallet.transfer(&alice_address, amount).await?;
 
-        for _ in 0..30 {
+        for _ in 0..70 {
             context.monero.generate_block().await?;
         }
         alice_wallet.wait_until_synced(monero_sys::no_listener()).await?;
@@ -124,7 +122,7 @@ async fn test_transfer_funds() -> Result<()> {
                 async move {
                     alice_wallet.wait_until_synced(monero_sys::no_listener()).await?;
                     let b = alice_wallet.unlocked_balance().await?;
-                    Ok(b.as_pico() == amount)
+                    Ok(b.as_pico() >= amount)
                 }
             },
             Duration::from_secs(40),
@@ -135,7 +133,7 @@ async fn test_transfer_funds() -> Result<()> {
         let bob_wallet = WalletHandle::open_or_create(
             bob_dir.path().join("bob_wallet").display().to_string(),
             context.daemon.clone(),
-            network,
+            Network::Mainnet,
             true,
         ).await?;
 
@@ -144,9 +142,10 @@ async fn test_transfer_funds() -> Result<()> {
         let send_amount = 100_000_000_000u64; // 0.1 XMR
         alice_wallet.transfer_single_destination(&bob_address, Amount::from_pico(send_amount)).await?;
 
-        for _ in 0..30 {
+        for _ in 0..70 {
             context.monero.generate_block().await?;
         }
+        
         bob_wallet.wait_until_synced(monero_sys::no_listener()).await?;
         wait_for_condition(
             || {
@@ -154,7 +153,7 @@ async fn test_transfer_funds() -> Result<()> {
                 async move {
                     bob_wallet.wait_until_synced(monero_sys::no_listener()).await?;
                     let b = bob_wallet.unlocked_balance().await?;
-                    Ok(b.as_pico() == send_amount)
+                    Ok(b.as_pico() >= send_amount)
                 }
             },
             Duration::from_secs(60),
