@@ -9,64 +9,31 @@ use monero_wallet::{MoneroTauriHandle, Wallets};
 use serial_test::serial;
 use std::sync::{Arc, Mutex};
 use swap_core::monero::Amount;
-use tokio::sync::Notify;
 use uuid::Uuid;
 use std::time::Duration;
 
-struct MockTauriHandle {
-    balance_updates: Arc<Mutex<Vec<(Amount, Amount)>>>,
-    history_updates: Arc<Mutex<Vec<Vec<TransactionInfo>>>>,
-    sync_updates: Arc<Mutex<Vec<(u64, u64, f32)>>>,
-    notify: Notify,
+#[derive(Default)]
+struct RecordingTauriHandle {
+    balance_updates: Mutex<Vec<(Amount, Amount)>>,
+    history_updates: Mutex<Vec<Vec<TransactionInfo>>> ,
+    sync_updates: Mutex<Vec<(u64, u64, f32)>>,
 }
 
-impl MockTauriHandle {
-    fn new() -> Self {
-        Self {
-            balance_updates: Arc::new(Mutex::new(Vec::new())),
-            history_updates: Arc::new(Mutex::new(Vec::new())),
-            sync_updates: Arc::new(Mutex::new(Vec::new())),
-            notify: Notify::new(),
-        }
-    }
-
-    async fn wait_for_sync_update(&self, timeout: Duration) -> Result<()> {
-        let deadline = tokio::time::Instant::now() + timeout;
-        loop {
-            {
-                if !self.sync_updates.lock().unwrap().is_empty() {
-                    return Ok(());
-                }
-            }
-
-            let notified = self.notify.notified();
-            let now = tokio::time::Instant::now();
-            if now >= deadline {
-                return Err(anyhow::anyhow!("timed out waiting for sync update"));
-            }
-
-            match tokio::time::timeout(deadline - now, notified).await {
-                Ok(()) => { continue; }
-                Err(_) => { return Err(anyhow::anyhow!("timed out waiting for sync update")); }
-            }
-        }
-    }
+impl RecordingTauriHandle {
+    fn new() -> Self { Default::default() }
 }
 
-impl MoneroTauriHandle for MockTauriHandle {
+impl MoneroTauriHandle for RecordingTauriHandle {
     fn balance_change(&self, total_balance: Amount, unlocked_balance: Amount) {
         self.balance_updates.lock().unwrap().push((total_balance, unlocked_balance));
-        self.notify.notify_waiters();
     }
 
     fn history_update(&self, transactions: Vec<TransactionInfo>) {
         self.history_updates.lock().unwrap().push(transactions);
-        self.notify.notify_waiters();
     }
 
     fn sync_progress(&self, current_block: u64, target_block: u64, progress_percentage: f32) {
         self.sync_updates.lock().unwrap().push((current_block, target_block, progress_percentage));
-        self.notify.notify_waiters();
     }
 }
 
@@ -74,10 +41,10 @@ impl MoneroTauriHandle for MockTauriHandle {
 #[serial]
 async fn test_tauri_listener() -> Result<()> {
     setup_test(|context| async move {
-        let handle = Arc::new(MockTauriHandle::new());
+        let handle = Arc::new(RecordingTauriHandle::new());
         let tauri_handle = Some(handle.clone() as Arc<dyn MoneroTauriHandle>);
 
-        let _wallets = Wallets::new(
+        let wallets = Wallets::new(
             context.wallet_dir.path().to_path_buf(),
             WALLET_NAME.to_string(),
             context.daemon.clone(),
@@ -87,10 +54,11 @@ async fn test_tauri_listener() -> Result<()> {
             None,
         ).await?;
 
-        context.monero.generate_block().await?;
-        handle.wait_for_sync_update(Duration::from_secs(8)).await?;
-        let updates = handle.sync_updates.lock().unwrap();
-        assert!(!updates.is_empty());
+        let main_wallet = wallets.main_wallet().await;
+        
+        context.sync_wallet(&main_wallet).await?;
+
+        assert!(!handle.sync_updates.lock().unwrap().is_empty());
 
         Ok(())
     }).await?;
@@ -171,27 +139,23 @@ async fn test_swap_wallet() -> Result<()> {
 
         let amount = 1_000_000_000_000u64; // 1 XMR
         let tx = TxHash(context.monero.wallet("miner")?.transfer(&address, amount).await?.txid,);
-        for _ in 0..70 {
-            context.monero.generate_block().await?;
-        }
+        context.generate_blocks(12).await?;
 
         let wallets = context.create_wallets().await?;
         let swap_id = Uuid::new_v4();
-        let deadline = tokio::time::Instant::now() + Duration::from_secs(60);
+        let swap_wallet_arc = wallets
+            .swap_wallet_spendable(swap_id, spend_key.clone(), view_key.clone(), tx.clone())
+            .await
+            .expect("swap wallet created");
 
-        let swap_wallet = loop {
-            match wallets.swap_wallet_spendable(swap_id, spend_key.clone().into(), view_key.clone(), tx.clone()).await
-            {
-                Ok(w) => break w,
-                Err(_) if tokio::time::Instant::now() < deadline => {
-                    tokio::time::sleep(Duration::from_millis(200)).await
-                }
-                Err(e) => break Err(anyhow::anyhow!("Failed to open swap wallet: {e}"))?,
-            }
-        };
-        swap_wallet.wait_until_synced(monero_sys::no_listener()).await?;
+        let swap_wallet = swap_wallet_arc.clone();
+        swap_wallet.set_restore_height(0).await?;
+        swap_wallet.scan_transaction(tx.0.clone()).await?;
+        swap_wallet.refresh_blocking().await?;
+        context.wait_for_unlocked_balance(&swap_wallet, amount, 120).await?;
         let total = swap_wallet.total_balance().await?.as_pico();
         assert!(total >= amount, "swap wallet balance {} < expected {}", total, amount);
+        
         Ok(())
     }).await?;
     Ok(())
@@ -206,10 +170,8 @@ async fn test_change_monero_node_to_different_daemon() -> Result<()> {
         let wallets = context.create_wallets().await?;
         let main_wallet = wallets.main_wallet().await;
 
-        for _ in 0..70 {
-            context.monero.generate_block().await?;
-        }
-        main_wallet.wait_until_synced(monero_sys::no_listener()).await?;
+        context.generate_blocks(12).await?;
+        context.sync_wallet(&main_wallet).await?;
         let height_a = main_wallet.blockchain_height().await?;
 
         let cli = Cli::default();

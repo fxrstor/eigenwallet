@@ -7,11 +7,22 @@ use std::sync::OnceLock;
 use tempfile::TempDir;
 use monero_harness::Cli;
 
+static INIT_RUSTLS: std::sync::Once = std::sync::Once::new();
+static INIT_TRACING: OnceLock<()> = OnceLock::new();
+
 pub const WALLET_NAME: &str = "test_wallet";
 
+fn init_rustls() {
+    INIT_RUSTLS.call_once(|| {
+        rustls::crypto::ring::default_provider()
+            .install_default()
+            .expect("failed to install rustls ring crypto provider");
+    });
+}
+
 fn init_globals() {
-    static INIT: OnceLock<()> = OnceLock::new();
-    INIT.get_or_init(|| {
+    init_rustls();
+    INIT_TRACING.get_or_init(|| {
         let subscriber = tracing_subscriber::fmt()
             .with_env_filter("info,monero_wallet=debug,monero_sys=debug")
             .with_test_writer();
@@ -27,6 +38,7 @@ pub struct TestContext {
     pub wallet_name: String,
 }
 
+#[allow(dead_code)]
 impl TestContext {
     pub async fn create_wallets(&self) -> Result<Wallets> {
         Wallets::new(
@@ -41,6 +53,41 @@ impl TestContext {
         .await
         .context("creating wallets")
     }
+
+    pub async fn generate_blocks(&self, n: usize) -> Result<()> {
+        for _ in 0..n {
+            self.monero.generate_block().await.context("generating block")?;
+        }
+        
+        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+        Ok(())
+    }
+    
+    pub async fn sync_wallet(&self, wallet: &monero_sys::WalletHandle) -> Result<()> {
+        use std::time::Duration;
+        const SYNC_TIMEOUT_SECS: u64 = 180;
+        tokio::time::timeout(Duration::from_secs(SYNC_TIMEOUT_SECS), async {
+            wallet.wait_until_synced(monero_sys::no_listener()).await
+        })
+        .await
+        .context("wallet sync timeout")?
+        .context("wallet wait_until_synced error")?;
+        Ok(())
+    }
+
+    pub async fn wait_for_unlocked_balance(&self, wallet: &monero_sys::WalletHandle, expected_pico: u64, timeout_secs: u64) -> Result<()> {
+        use std::time::{Duration, Instant};
+        let start = Instant::now();
+        while start.elapsed().as_secs() < timeout_secs {
+            let unlocked = wallet.unlocked_balance().await.context("reading unlocked balance")?;
+            if unlocked.as_pico() >= expected_pico {
+                return Ok(());
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+        anyhow::bail!("timeout waiting for unlocked balance >= {}", expected_pico);
+    }
+
 }
 
 pub async fn setup_test<F, Fut>(test: F) -> Result<()>
@@ -51,7 +98,7 @@ where
     init_globals();
     let cli = Cli::default();
     let wallet_name_string = WALLET_NAME.to_string();
-    let (monero, monerod_container, wallet_container) = Monero::new(&cli, vec![WALLET_NAME]).await.context("spawning monero containers")?;
+    let (monero, monerod_container, _wallet_container) = Monero::new(&cli, vec![WALLET_NAME, "miner"]).await.context("spawning monero containers")?;
 
     let monerod_port = monerod_container
         .ports()
@@ -76,10 +123,5 @@ where
         wallet_name: wallet_name_string,
     };
     
-    let test_result = test(ctx).await;
-
-    drop(monerod_container);
-    drop(wallet_container);
-
-    test_result
+    test(ctx).await
 }
