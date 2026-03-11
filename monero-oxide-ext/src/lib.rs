@@ -122,7 +122,7 @@ pub mod serde_compressed_edwards {
                         .ok_or_else(|| serde::de::Error::invalid_length(i, &"expected 32 bytes"))?;
                 }
                 Ok(PublicKey::from_slice(&bytes)
-                    .map_err(serde::de::Error::custom(e))?
+                    .map_err(serde::de::Error::custom)?
                     .point)
             }
         }
