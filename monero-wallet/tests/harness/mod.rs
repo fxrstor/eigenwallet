@@ -87,11 +87,6 @@ impl TestContext {
         }
         anyhow::bail!("timeout waiting for unlocked balance >= {}", expected_pico);
     }
-
-    pub async fn shutdown_wallet(&self, wallet: &monero_sys::WalletHandle) -> Result<()> {
-        wallet.stop_background_sync().await.ok();
-        Ok(())
-    }
 }
 
 pub async fn setup_test<F, Fut>(test: F) -> Result<()>
