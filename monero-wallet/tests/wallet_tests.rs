@@ -145,7 +145,7 @@ async fn test_swap_wallet() -> Result<()> {
 
         let swap_id = Uuid::new_v4();
         let swap_wallet_arc = wallets
-            .swap_wallet_spendable(swap_id, spend_key.clone(), view_key.clone(), TxHash([0u8; 32]),)
+            .swap_wallet_spendable(swap_id, spend_key.clone(), view_key.clone(), TxHash("00".repeat(32)),)
             .await
             .expect("swap wallet created");
 
