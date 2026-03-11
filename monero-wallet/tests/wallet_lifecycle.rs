@@ -33,7 +33,7 @@ async fn test_open_existing_wallet() -> Result<()> {
             harness::WALLET_NAME.to_string(),
             context.daemon.clone(),
             Network::Mainnet,
-            true,
+            false,
             None,
             None,
         ).await?;
@@ -68,7 +68,7 @@ async fn test_restore_wallet_from_seed() -> Result<()> {
             seed.clone(),
             Network::Mainnet,
             0,
-            true,
+            false,
             context.daemon.clone(),
         ).await?;
 
@@ -77,6 +77,9 @@ async fn test_restore_wallet_from_seed() -> Result<()> {
         let restored_address = restored_wallet.main_address().await?;
         assert_eq!(address, restored_address);
 
+        drop(restored_wallet);
+        drop(wallets);
+        
         Ok(())
     }).await?;
     Ok(())

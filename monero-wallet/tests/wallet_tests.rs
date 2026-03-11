@@ -49,7 +49,7 @@ async fn test_tauri_listener() -> Result<()> {
             WALLET_NAME.to_string(),
             context.daemon.clone(),
             Network::Mainnet,
-            true,
+            false,
             tauri_handle,
             None,
         ).await?;
@@ -97,7 +97,7 @@ async fn test_recent_wallets() -> Result<()> {
             WALLET_NAME.to_string(),
             context.daemon.clone(),
             Network::Mainnet,
-            true,
+            false,
             None,
             Some(db.clone()),
         ).await?;
@@ -137,25 +137,32 @@ async fn test_swap_wallet() -> Result<()> {
             (spend_key, view_key, address)
         };
 
-        let amount = 1_000_000_000_000u64; // 1 XMR
-        let tx = TxHash(context.monero.wallet("miner")?.transfer(&address, amount).await?.txid,);
-        context.generate_blocks(12).await?;
-
+        
         let wallets = context.create_wallets().await?;
+        let main_wallet = wallets.main_wallet().await;
+
+        context.sync_wallet(&main_wallet).await?;
+
         let swap_id = Uuid::new_v4();
         let swap_wallet_arc = wallets
-            .swap_wallet_spendable(swap_id, spend_key.clone(), view_key.clone(), tx.clone())
+            .swap_wallet_spendable(swap_id, spend_key.clone(), view_key.clone(), TxHash([0u8; 32]),)
             .await
             .expect("swap wallet created");
 
         let swap_wallet = swap_wallet_arc.clone();
         swap_wallet.set_restore_height(0).await?;
+
+        let amount = 1_000_000_000_000u64;
+        let tx = TxHash(context.monero.wallet("miner")?.transfer(&address, amount).await?.txid,);
+        context.generate_blocks(12).await?;
+
         swap_wallet.scan_transaction(tx.0.clone()).await?;
         swap_wallet.refresh_blocking().await?;
+
         context.wait_for_unlocked_balance(&swap_wallet, amount, 120).await?;
+
         let total = swap_wallet.total_balance().await?.as_pico();
         assert!(total >= amount, "swap wallet balance {} < expected {}", total, amount);
-        
         Ok(())
     }).await?;
     Ok(())
