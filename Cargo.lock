@@ -2446,7 +2446,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ab67060fc6b8ef687992d439ca0fa36e7ed17e9a0b16b25b601e8757df720de"
 dependencies = [
  "data-encoding",
- "syn 1.0.109",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -2525,7 +2525,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "284db66a66f03c3dafbe17360d959eb76b83f77cfe191677e2a7899c0da291f3"
 dependencies = [
  "derive-deftly-macros",
- "heck 0.4.1",
+ "heck 0.5.0",
 ]
 
 [[package]]
@@ -2534,10 +2534,10 @@ version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caef6056a5788d05d173cdc3c562ac28ae093828f851f69378b74e4e3d578e41"
 dependencies = [
- "heck 0.4.1",
- "indexmap 1.9.3",
- "itertools 0.13.0",
- "proc-macro-crate 1.3.1",
+ "heck 0.5.0",
+ "indexmap 2.13.0",
+ "itertools",
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "sha3",
@@ -4997,15 +4997,6 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
@@ -6505,7 +6496,7 @@ dependencies = [
  "curve25519-dalek-ng",
  "hex",
  "monero-address",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
+ "monero-wallet",
  "serde",
  "typeshare",
 ]
@@ -6619,33 +6610,9 @@ dependencies = [
  "monero-oxide-ext",
  "monero-simple-request-rpc",
  "monero-sys",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
+ "monero-wallet",
  "monero-wallet-ng",
  "testcontainers",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
- "zeroize",
-]
-
-[[package]]
-name = "monero-wallet"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "backoff",
- "curve25519-dalek",
- "hex",
- "monero-address",
- "monero-daemon-rpc",
- "monero-oxide-ext",
- "monero-simple-request-rpc",
- "monero-sys",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
- "monero-wallet-ng",
- "swap-core",
- "throttle",
  "tokio",
  "tracing",
  "tracing-subscriber",
@@ -6686,12 +6653,42 @@ dependencies = [
  "monero-interface",
  "monero-oxide",
  "monero-simple-request-rpc",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
+ "monero-wallet",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
+ "zeroize",
+]
+
+[[package]]
+name = "monero_wallet"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "backoff",
+ "curve25519-dalek",
+ "hex",
+ "monero-address",
+ "monero-daemon-rpc",
+ "monero-harness",
+ "monero-oxide-ext",
+ "monero-simple-request-rpc",
+ "monero-sys",
+ "monero-wallet",
+ "monero-wallet-ng",
+ "rand 0.8.5",
+ "rustls 0.23.37",
+ "serial_test",
+ "swap-core",
+ "tempfile",
+ "testcontainers",
+ "throttle",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
  "zeroize",
 ]
 
@@ -7073,7 +7070,7 @@ version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "680998035259dcfcafe653688bf2aa6d3e2dc05e98be6ab46afb089dc84f1df8"
 dependencies = [
- "proc-macro-crate 1.3.1",
+ "proc-macro-crate 3.5.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -8204,7 +8201,7 @@ dependencies = [
  "derive-deftly",
  "libc",
  "paste",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -9305,6 +9302,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b63583a1dd0647d1484228529ab4ecaa874048d2956f117362aa5f5826456230"
 
 [[package]]
+name = "scc"
+version = "2.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46e6f046b7fef48e2660c57ed794263155d713de679057f2d0c169bfc6e756cc"
+dependencies = [
+ "sdd",
+]
+
+[[package]]
 name = "schannel"
 version = "0.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9395,6 +9401,12 @@ dependencies = [
  "ring 0.17.14",
  "untrusted 0.9.0",
 ]
+
+[[package]]
+name = "sdd"
+version = "3.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "490dcfcbfef26be6800d11870ff2df8774fa6e86d047e3e8c8a76b25655e41ca"
 
 [[package]]
 name = "seahash"
@@ -9827,6 +9839,32 @@ dependencies = [
  "ryu",
  "serde",
  "unsafe-libyaml",
+]
+
+[[package]]
+name = "serial_test"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "911bd979bf1070a3f3aa7b691a3b3e9968f339ceeec89e08c280a8a22207a32f"
+dependencies = [
+ "futures-executor",
+ "futures-util",
+ "log",
+ "once_cell",
+ "parking_lot 0.12.5",
+ "scc",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a7d91949b85b0d2fb687445e448b40d322b6b3e4af6b44a29b21d9a5f33e6d9"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -10675,7 +10713,7 @@ dependencies = [
  "monero-rpc-pool",
  "monero-seed",
  "monero-sys",
- "monero-wallet 0.1.0",
+ "monero_wallet",
  "pem",
  "proptest",
  "rand 0.8.5",
@@ -10796,7 +10834,7 @@ dependencies = [
  "futures",
  "monero-address",
  "monero-oxide-ext",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
+ "monero-wallet",
  "proptest",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
@@ -10981,7 +11019,7 @@ dependencies = [
  "libp2p",
  "monero-address",
  "monero-oxide-ext",
- "monero-wallet 0.1.0 (git+https://github.com/kayabaNerve/monero-oxide.git)",
+ "monero-wallet",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -12059,7 +12097,7 @@ dependencies = [
  "derive_more 2.1.1",
  "getrandom 0.3.4",
  "hex",
- "itertools 0.14.0",
+ "itertools",
  "libc",
  "paste",
  "rand 0.9.2",
@@ -12101,7 +12139,7 @@ dependencies = [
  "derive-deftly",
  "derive_more 2.1.1",
  "educe",
- "itertools 0.14.0",
+ "itertools",
  "paste",
  "rand 0.9.2",
  "smallvec",
@@ -12206,7 +12244,7 @@ dependencies = [
  "educe",
  "futures",
  "humantime-serde",
- "itertools 0.14.0",
+ "itertools",
  "once_cell",
  "oneshot-fused-workaround",
  "pin-project",
@@ -12254,7 +12292,7 @@ dependencies = [
  "fs-mistrust",
  "futures",
  "humantime-serde",
- "itertools 0.14.0",
+ "itertools",
  "notify",
  "paste",
  "postage",
@@ -12314,7 +12352,7 @@ dependencies = [
  "http 1.4.0",
  "httparse",
  "httpdate",
- "itertools 0.14.0",
+ "itertools",
  "memchr",
  "thiserror 2.0.18",
  "tor-circmgr",
@@ -12367,7 +12405,7 @@ dependencies = [
  "hex",
  "humantime",
  "humantime-serde",
- "itertools 0.14.0",
+ "itertools",
  "memmap2",
  "oneshot-fused-workaround",
  "paste",
@@ -12447,7 +12485,7 @@ dependencies = [
  "futures",
  "humantime",
  "humantime-serde",
- "itertools 0.14.0",
+ "itertools",
  "num_enum",
  "oneshot-fused-workaround",
  "pin-project",
@@ -12486,7 +12524,7 @@ dependencies = [
  "educe",
  "either",
  "futures",
- "itertools 0.14.0",
+ "itertools",
  "oneshot-fused-workaround",
  "postage",
  "rand 0.9.2",
@@ -12534,7 +12572,7 @@ dependencies = [
  "equix",
  "hex",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "paste",
  "rand 0.9.2",
  "safelog",
@@ -12575,7 +12613,7 @@ dependencies = [
  "growable-bloom-filter",
  "hex",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "k12",
  "num-traits",
  "once_cell",
@@ -12654,7 +12692,7 @@ dependencies = [
  "glob-match",
  "humantime",
  "inventory",
- "itertools 0.14.0",
+ "itertools",
  "rand 0.9.2",
  "safelog",
  "serde",
@@ -12689,7 +12727,7 @@ dependencies = [
  "derive_builder_fork_arti",
  "derive_more 2.1.1",
  "hex",
- "itertools 0.14.0",
+ "itertools",
  "safelog",
  "serde",
  "serde_with 3.18.0",
@@ -12770,7 +12808,7 @@ dependencies = [
  "dyn-clone",
  "educe",
  "futures",
- "itertools 0.14.0",
+ "itertools",
  "paste",
  "pin-project",
  "serde",
@@ -12795,7 +12833,7 @@ version = "0.41.0"
 source = "git+https://github.com/eigenwallet/arti?branch=downgraded_rusqlite_arti_2_2_0#65933c076142bbe49f1384b823bc85b0a3ea34fc"
 dependencies = [
  "derive-deftly",
- "itertools 0.14.0",
+ "itertools",
  "paste",
  "void",
 ]
@@ -12812,7 +12850,7 @@ dependencies = [
  "futures",
  "hex",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "num_enum",
  "rand 0.9.2",
  "serde",
@@ -12848,7 +12886,7 @@ dependencies = [
  "enumset",
  "hex",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "memchr",
  "paste",
  "phf 0.13.1",
@@ -12892,7 +12930,7 @@ dependencies = [
  "fslock",
  "fslock-guard",
  "futures",
- "itertools 0.14.0",
+ "itertools",
  "oneshot-fused-workaround",
  "paste",
  "sanitize-filename",
@@ -12932,7 +12970,7 @@ dependencies = [
  "futures-util",
  "hkdf",
  "hmac",
- "itertools 0.14.0",
+ "itertools",
  "nonany",
  "oneshot-fused-workaround",
  "pin-project",
@@ -13065,7 +13103,7 @@ dependencies = [
  "educe",
  "futures",
  "humantime",
- "itertools 0.14.0",
+ "itertools",
  "oneshot-fused-workaround",
  "pin-project",
  "priority-queue",
