@@ -1,71 +1,74 @@
 mod harness;
 
 use anyhow::{Context, Result};
-use harness::{setup_test, CONFIRM_BLOCKS};
+use harness::{setup_test, CONFIRM_BLOCKS, TestContext};
 use monero_address::{AddressType, MoneroAddress, Network};
 use monero_oxide_ext::{PrivateKey, PublicKey};
 use rand::rngs::OsRng;
 use serial_test::serial;
 use swap_core::monero::primitives::{PrivateViewKey, TxHash};
 use uuid::Uuid;
+use std::sync::Arc;
 
 #[tokio::test]
 #[serial]
 async fn test_swap_wallet_detects_incoming_balance() -> Result<()> {
-    setup_test(|ctx| async move {
-        let mut rng = OsRng;
+    setup_test(test_swap_wallet_detects_incoming_balance_impl).await
+}
 
-        let spend_key_prim = PrivateViewKey::new_random(&mut rng);
-        let view_key_prim = PrivateViewKey::new_random(&mut rng);
+async fn test_swap_wallet_detects_incoming_balance_impl(ctx: Arc<TestContext>) -> Result<()> {
+    let mut rng = OsRng;
 
-        let spend_key: PrivateKey = spend_key_prim.into();
-        let view_key_for_addr: PrivateKey = view_key_prim.clone().into();
+    let spend_key_prim = PrivateViewKey::new_random(&mut rng);
+    let view_key_prim = PrivateViewKey::new_random(&mut rng);
 
-        let address = MoneroAddress::new(
-            Network::Mainnet,
-            AddressType::Legacy,
-            PublicKey::from_private_key(&spend_key).decompress(),
-            PublicKey::from_private_key(&view_key_for_addr).decompress(),
-        );
+    let spend_key: PrivateKey = spend_key_prim.into();
+    let view_key_for_addr: PrivateKey = view_key_prim.clone().into();
 
-        let amount = 1_000_000_000_000u64;
-        let receipt = ctx
-            .monero
-            .wallet("miner")?
-            .transfer(&address, amount)
-            .await
-            .context("funding swap address")?;
+    let address = MoneroAddress::new(
+        Network::Mainnet,
+        AddressType::Legacy,
+        PublicKey::from_private_key(&spend_key).decompress(),
+        PublicKey::from_private_key(&view_key_for_addr).decompress(),
+    );
 
-        let tx_hash = TxHash(receipt.txid);
+    let amount = 1_000_000_000_000u64;
+    let receipt = ctx
+        .monero
+        .wallet("miner")?
+        .transfer(&address, amount)
+        .await
+        .context("funding swap address")?;
 
-        ctx.generate_blocks(CONFIRM_BLOCKS).await?;
+    let tx_hash = TxHash(receipt.txid);
 
-        let wallets = ctx.open_test_wallets().await?;
-        let main_wallet = wallets.main_wallet().await;
-        main_wallet.refresh_blocking().await?;
-        let restore_height = main_wallet.blockchain_height().await?.saturating_sub(15);
+    ctx.generate_blocks(CONFIRM_BLOCKS).await?;
 
-        let swap_wallet = wallets
-            .swap_wallet_spendable(Uuid::new_v4(), spend_key, view_key_prim, tx_hash)
-            .await
-            .context("creating spendable swap wallet")?;
+    let wallets = ctx.open_test_wallets().await?;
+    let main_wallet = wallets.main_wallet().await;
+    main_wallet.refresh_blocking().await?;
+    let restore_height = main_wallet.blockchain_height().await?.saturating_sub(15);
 
-        swap_wallet.set_restore_height(restore_height).await?;
-        swap_wallet.refresh_blocking().await?;
+    let swap_wallet = wallets
+        .swap_wallet_spendable(Uuid::new_v4(), spend_key, view_key_prim, tx_hash)
+        .await
+        .context("creating spendable swap wallet")?;
 
-        ctx.sync_wallet(&swap_wallet).await?;
-        ctx.wait_for_unlocked_balance(&swap_wallet, amount, 120).await?;
+    swap_wallet.set_restore_height(restore_height).await?;
+    swap_wallet.refresh_blocking().await?;
 
-        let balance = swap_wallet.total_balance().await?;
-        assert!(
-            balance.as_pico() >= amount,
-            "swap wallet balance too low: got {} expected ≥ {amount}",
-            balance.as_pico()
-        );
+    ctx.sync_wallet(&swap_wallet).await?;
+    ctx.wait_for_unlocked_balance(&swap_wallet, amount, 120).await?;
 
-        ctx.shutdown_test_wallets(wallets).await?;
+    let balance = swap_wallet.total_balance().await?;
+    assert_eq!(
+        balance.as_pico(),
+        amount,
+        "swap wallet balance mismatch"
+    );
 
-        Ok(())
-    })
-    .await
+    drop(swap_wallet);
+    ctx.shutdown_test_wallets(wallets).await?;
+
+    Ok(())
 }
