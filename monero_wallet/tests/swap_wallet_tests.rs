@@ -44,7 +44,18 @@ async fn test_swap_wallet_detects_incoming_balance_impl(ctx: Arc<TestContext>) -
 
     ctx.generate_blocks(CONFIRM_BLOCKS).await?;
 
-    let wallets = ctx.open_test_wallets().await?;
+    let wallets = Wallets::new(
+            ctx.wallet_dir.path().to_path_buf(),
+            WALLET_NAME.to_string(),
+            ctx.daemon.clone(),
+            Network::Mainnet,
+            true,
+            None,
+            None,
+        )
+        .await
+        .context("creating Wallets")?;
+        
     let main_wallet = wallets.main_wallet().await;
     main_wallet.refresh_blocking().await?;
     let restore_height = main_wallet.blockchain_height().await?.saturating_sub(15);
@@ -57,7 +68,6 @@ async fn test_swap_wallet_detects_incoming_balance_impl(ctx: Arc<TestContext>) -
     swap_wallet.set_restore_height(restore_height).await?;
     swap_wallet.refresh_blocking().await?;
 
-    ctx.sync_wallet(&swap_wallet).await?;
     ctx.wait_for_unlocked_balance(&swap_wallet, amount, 120).await?;
 
     let balance = swap_wallet.total_balance().await?;

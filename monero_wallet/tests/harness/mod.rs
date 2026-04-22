@@ -79,21 +79,7 @@ impl TestContext {
     pub fn wallet_path(&self) -> PathBuf {
         self.wallet_dir.path().join(WALLET_NAME)
     }
-
-    pub async fn open_test_wallets(&self) -> Result<Wallets> {
-        Wallets::new(
-            self.wallet_dir.path().to_path_buf(),
-            WALLET_NAME.to_string(),
-            self.daemon.clone(),
-            Network::Mainnet,
-            true,
-            None,
-            None,
-        )
-        .await
-        .context("creating Wallets")
-    }
-
+    
     pub async fn open_regtest_wallet(&self, wallet_path: PathBuf) -> Result<WalletHandle> {
         let wallet = WalletHandle::open_or_create(
             wallet_path.display().to_string(),
