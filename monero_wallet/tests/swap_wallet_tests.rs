@@ -1,7 +1,7 @@
 mod harness;
 
 use anyhow::{Context, Result};
-use harness::{setup_test, CONFIRM_BLOCKS, TestContext};
+use harness::{setup_test, CONFIRM_BLOCKS, WALLET_NAME, TestContext};
 use monero_address::{AddressType, MoneroAddress, Network};
 use monero_oxide_ext::{PrivateKey, PublicKey};
 use rand::rngs::OsRng;
@@ -9,6 +9,7 @@ use serial_test::serial;
 use swap_core::monero::primitives::{PrivateViewKey, TxHash};
 use uuid::Uuid;
 use std::sync::Arc;
+use monero_wallet::Wallets;
 
 #[tokio::test]
 #[serial]
@@ -55,7 +56,7 @@ async fn test_swap_wallet_detects_incoming_balance_impl(ctx: Arc<TestContext>) -
         )
         .await
         .context("creating Wallets")?;
-        
+
     let main_wallet = wallets.main_wallet().await;
     main_wallet.refresh_blocking().await?;
     let restore_height = main_wallet.blockchain_height().await?.saturating_sub(15);
