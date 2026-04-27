@@ -78,8 +78,5 @@ async fn test_swap_wallet_detects_incoming_balance_impl(ctx: Arc<TestContext>) -
         "swap wallet balance mismatch"
     );
 
-    drop(swap_wallet);
-    ctx.shutdown_test_wallets(wallets).await?;
-
     Ok(())
 }

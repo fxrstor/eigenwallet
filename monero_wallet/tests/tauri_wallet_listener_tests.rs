@@ -78,7 +78,7 @@ async fn test_tauri_listener_emits_balance_and_history_updates() -> Result<()> {
 }
 
 async fn test_tauri_listener_emits_balance_and_history_updates_impl(ctx: Arc<TestContext>) -> Result<()> {
-    let (handle, listener, wallet) = make_listener(&ctx).await?;
+    let (handle, listener, _wallet) = make_listener(&ctx).await?;
 
     listener.on_money_received("txid", 1_000_000);
     listener.on_money_spent("txid2", 500_000);
@@ -93,10 +93,6 @@ async fn test_tauri_listener_emits_balance_and_history_updates_impl(ctx: Arc<Tes
         assert!(!history_guards.is_empty(), "expected at least one history update");
     }
 
-    drop(listener);
-    drop(wallet);
-    drop(handle);
-
     Ok(())
 }
 
@@ -107,7 +103,7 @@ async fn test_tauri_listener_emits_sync_progress_on_new_block() -> Result<()> {
 }
 
 async fn test_tauri_listener_emits_sync_progress_on_new_block_impl(ctx: Arc<TestContext>) -> Result<()> {
-    let (handle, listener, wallet) = make_listener(&ctx).await?;
+    let (handle, listener, _wallet) = make_listener(&ctx).await?;
 
     listener.on_new_block(100);
 
@@ -117,10 +113,6 @@ async fn test_tauri_listener_emits_sync_progress_on_new_block_impl(ctx: Arc<Test
         let sync = handle.sync_updates.lock().unwrap();
         assert!(!sync.is_empty(), "expected at least one sync update");
     }
-
-    drop(listener);
-    drop(wallet);
-    drop(handle);
     
     Ok(())
 }

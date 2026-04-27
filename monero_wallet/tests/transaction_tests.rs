@@ -47,7 +47,6 @@ async fn test_receive_funds_into_wallet_impl(ctx: Arc<TestContext>) -> Result<()
     let unlocked = main_wallet.unlocked_balance().await?;
     assert_eq!(unlocked.as_pico(), amount);
 
-    drop(main_wallet);
     Ok(())
 
 }
@@ -78,7 +77,6 @@ async fn test_records_incoming_transaction_in_history_impl(ctx: Arc<TestContext>
     assert_eq!(tx.direction, TransactionDirection::In);
     assert_eq!(tx.amount.as_pico(), amount);
 
-    drop(main_wallet);
     Ok(())
 }
 
@@ -116,7 +114,5 @@ async fn test_transfers_funds_between_wallets_impl(ctx: Arc<TestContext>) -> Res
     let bob_unlocked = bob.unlocked_balance().await?;
     assert_eq!(bob_unlocked.as_pico(), send_amount);
 
-    drop(bob);
-    drop(alice);
     Ok(())
 }

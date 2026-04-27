@@ -26,7 +26,6 @@ async fn test_creates_new_wallet_impl(ctx: Arc<TestContext>) -> Result<()> {
         "unexpected address prefix: {address}"
     );
 
-    drop(wallet);
     Ok(())
 }
 
@@ -41,9 +40,7 @@ async fn test_reopens_existing_wallet_impl(ctx: Arc<TestContext>) -> Result<()> 
 
     let initial_address = {
         let wallet = ctx.open_regtest_wallet(ctx.wallet_path()).await?;
-        let addr = wallet.main_address().await?;
-        drop(wallet);
-        addr
+        wallet.main_address().await?
     };
 
     let reopened = ctx
@@ -55,7 +52,6 @@ async fn test_reopens_existing_wallet_impl(ctx: Arc<TestContext>) -> Result<()> 
     assert_eq!(address.network(), Network::Mainnet);
     assert_eq!(address.to_string(), initial_address.to_string());
 
-    drop(reopened);
     Ok(())
 }
 
@@ -96,7 +92,6 @@ async fn test_restores_wallet_from_seed_impl(ctx: Arc<TestContext>) -> Result<()
         "restored address differs from original"
     );
 
-    drop(restored);
     Ok(())
 }
 
@@ -134,7 +129,6 @@ async fn test_records_wallet_in_recent_wallets_impl(ctx: Arc<TestContext>) -> Re
         "expected wallet name '{WALLET_NAME}' not found in recent list"
     );
 
-    ctx.shutdown_test_wallets(wallets).await?;
     Ok(())
 }
 
@@ -160,7 +154,6 @@ async fn test_change_monero_node_to_same_daemon_impl(ctx: Arc<TestContext>) -> R
 
     assert!(height_after >= height_before);
 
-    drop(wallet);
     Ok(())
 }
 

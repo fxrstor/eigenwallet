@@ -4,7 +4,6 @@ use anyhow::{Context, Result};
 use monero_address::Network;
 use monero_harness::{image, Monero};
 use monero_sys::{Daemon, WalletHandle};
-use monero_wallet::Wallets;
 use std::future::Future;
 use std::path::PathBuf;
 use std::sync::{Arc, Once, OnceLock};
@@ -94,16 +93,6 @@ impl TestContext {
         Ok(wallet)
     }
     
-    pub async fn shutdown_test_wallets(&self, wallets: Wallets) -> Result<()> {
-        {
-            let main = wallets.main_wallet().await;
-            let _ = main.pause_refresh().await;
-        }
-
-        sleep(SETTLE_DURATION).await;
-        Ok(())
-    }
-
     pub async fn generate_blocks(&self, n: usize) -> Result<()> {
         for _ in 0..n {
             self.monero
